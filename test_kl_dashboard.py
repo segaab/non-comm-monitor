@@ -88,18 +88,17 @@ if not weekly_price_data.empty:
     st.plotly_chart(fig, use_container_width=True)
 
 # --- RVol Chart ---
-st.header("RVol Chart (Wednesday-Tuesday)")
-if not weekly_price_data.empty and 'rvol' in weekly_price_data.columns:
+st.header("Volume Chart (Wednesday-Tuesday)")
+if not weekly_price_data.empty and 'Volume' in weekly_price_data.columns:
     fig2 = go.Figure()
     fig2.add_trace(go.Bar(
         x=weekly_price_data['datetime'],
-        y=weekly_price_data['rvol'],
-        name='RVol',
+        y=weekly_price_data['Volume'],
+        name='Volume',
         marker_color='blue',
         opacity=0.7
     ))
-    fig2.add_hline(y=1.0, line_dash="dash", line_color="red", annotation_text="RVol = 1.0")
-    fig2.update_layout(title="RVol Chart", height=300)
+    fig2.update_layout(title="Volume Chart", height=300, yaxis_title='Volume')
     st.plotly_chart(fig2, use_container_width=True)
 
 # --- KL Table ---

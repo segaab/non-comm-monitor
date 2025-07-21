@@ -163,7 +163,7 @@ def fetch_price_data(symbol, start_date=None, end_date=None, interval="1h"):
             if 'Volume' in hist.columns:
                 hist = hist.dropna(subset=["Volume"])
                 hist = hist[hist["Volume"] > 0]
-                hist["avg_volume"] = hist["Volume"].rolling(window=20).mean()
+                hist["avg_volume"] = hist["Volume"].rolling(window=5).mean()
                 hist["rvol"] = hist["Volume"] / hist["avg_volume"]
                 hist["rvol"] = hist["rvol"].fillna(1.0)
             # Filter to the exact date range (in case API returns more)
