@@ -6,6 +6,11 @@ from kl_data_utils import filter_to_wednesday_tuesday_from_latest, calculate_cot
 from kl_overlay_utils import fetch_kl_zones, add_kl_overlay
 import logging
 
+
+
+st.set_page_config(page_title="KL Test Dashboard", layout="wide")
+st.title("KL Test Dashboard")
+
 # --- UI: Asset selection ---
 COT_FUTURES_MAPPING = {
     "GOLD - COMMODITY EXCHANGE INC.": "GC=F",
@@ -30,9 +35,6 @@ COT_FUTURES_MAPPING = {
     "DOLLAR INDEX - ICE FUTURES U.S.": "DX-Y.NYB",
     "SPDR S&P 500 ETF TRUST": "SPY",
 }
-
-st.set_page_config(page_title="KL Test Dashboard", layout="wide")
-st.title("KL Test Dashboard")
 
 # Move asset selection to sidebar and make it more visible
 with st.sidebar:
