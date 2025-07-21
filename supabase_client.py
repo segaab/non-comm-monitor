@@ -196,17 +196,17 @@ def get_kl_client() -> SupabaseKLClient:
         _kl_client = SupabaseKLClient()
     return _kl_client
 
-def format_kl_zone_for_db(kl_zone: Dict, symbol: str, cot_asset_name: str, time_period: str = 'weekly') -> Dict:
+def format_kl_zone_for_db(kl_zone: dict, symbol: str, cot_asset_name: str, time_period: str = 'weekly') -> dict:
     """Format KL zone data for database insertion (minimal required fields)."""
     return {
         'symbol': symbol,
         'kl_type': kl_zone['kl_type'],
-        'zone_high': kl_zone['zone_high'],
-        'zone_low': kl_zone['zone_low'],
-        'zone_size': kl_zone['zone_size'],
-        'atr': kl_zone['atr'],
+        'zone_high': float(kl_zone['zone_high']),
+        'zone_low': float(kl_zone['zone_low']),
+        'zone_size': float(kl_zone['zone_size']),
+        'atr': float(kl_zone['atr']),
         'atr_multiplier': 2.0,
-        'candle_label': kl_zone['clicked_point'],  # Use clicked_point as candle_label
+        'candle_label': str(kl_zone['candle_label']),  # Use candle_label as unique identifier
         'time_period': time_period,
         'chart_interval': '1h',
     } 
