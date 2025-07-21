@@ -7,11 +7,11 @@ def fetch_kl_zones(symbol, period='weekly'):
     return kl_client.get_kl_zones_for_symbol(symbol, period)
 
 # 2. Overlay KL zones on a Plotly figure (horizontal lines + rectangle highlight)
-def add_kl_overlay(fig, kl_zones, price_data, row=1, col=1):
+def add_kl_overlay(fig, kl_zones, price_data):
     for kl in kl_zones:
         # Draw horizontal lines
-        fig.add_hline(y=kl['zone_high'], line_dash="dash", line_color="red", annotation_text="KL High", row=row, col=col)
-        fig.add_hline(y=kl['zone_low'], line_dash="dash", line_color="blue", annotation_text="KL Low", row=row, col=col)
+        fig.add_hline(y=kl['zone_high'], line_dash="dash", line_color="red", annotation_text="KL High")
+        fig.add_hline(y=kl['zone_low'], line_dash="dash", line_color="blue", annotation_text="KL Low")
         # Draw rectangle between the lines
         fig.add_shape(
             type="rect",
@@ -20,7 +20,6 @@ def add_kl_overlay(fig, kl_zones, price_data, row=1, col=1):
             y0=kl['zone_low'],
             y1=kl['zone_high'],
             fillcolor="rgba(255, 0, 0, 0.1)",  # semi-transparent
-            line=dict(width=0),
-            row=row, col=col
+            line=dict(width=0)
         )
     return fig 
