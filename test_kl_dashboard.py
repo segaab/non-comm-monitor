@@ -39,7 +39,6 @@ COT_FUTURES_MAPPING = {
 # Move asset selection to sidebar and make it more visible
 with st.sidebar:
     st.header("Asset Selection")
-    st.write("[DEBUG] Asset list:", list(COT_FUTURES_MAPPING.keys()))  # Debug: show asset list
     selected_asset = st.selectbox("Select Asset", list(COT_FUTURES_MAPPING.keys()), index=0)
     st.markdown("---")
     st.info("Use the sidebar to select the asset for analysis.")
@@ -110,27 +109,21 @@ if not weekly_price_data.empty:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# --- RVol Chart ---
-st.header("Volume Chart (Wednesday-Tuesday)")
-if not weekly_price_data.empty and 'Volume' in weekly_price_data.columns:
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(
-        x=weekly_price_data['datetime'],
-        y=weekly_price_data['Volume'],
-        name='Volume',
-        marker_color='blue',
-        opacity=0.7
-    ))
-    fig2.update_layout(title="Volume Chart", height=300, yaxis_title='Volume')
-    st.plotly_chart(fig2, use_container_width=True)
-
-# --- KL Table ---
-st.header("Current KL Zones (from DB)")
-if kl_zones:
-    kl_df = pd.DataFrame(kl_zones)
-    st.dataframe(kl_df, use_container_width=True)
-else:
-    st.info("No KL zones found in database.")
+# --- Volume Chart ---
+# Remove the RVol/Volume chart title
+def show_volume_chart():
+    if not weekly_price_data.empty and 'Volume' in weekly_price_data.columns:
+        fig2 = go.Figure()
+        fig2.add_trace(go.Bar(
+            x=weekly_price_data['datetime'],
+            y=weekly_price_data['Volume'],
+            name='Volume',
+            marker_color='blue',
+            opacity=0.7
+        ))
+        fig2.update_layout(height=300, yaxis_title='Volume')
+        st.plotly_chart(fig2, use_container_width=True)
+show_volume_chart()
 
 # --- KL Entry UI ---
 st.header("KL Calculation and Entry")
@@ -176,4 +169,13 @@ if not weekly_price_data.empty:
                 st.write(f"[DEBUG] Exception: {e}")
     with col2:
         if st.button("Refresh KLs"):
-            st.experimental_rerun() 
+            st.experimental_rerun()
+
+# --- KL Table ---
+# Move KL table to the bottom
+st.header("Current KL Zones (from DB)")
+if kl_zones:
+    kl_df = pd.DataFrame(kl_zones)
+    st.dataframe(kl_df, use_container_width=True)
+else:
+    st.info("No KL zones found in database.") 
