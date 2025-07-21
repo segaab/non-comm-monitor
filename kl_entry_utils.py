@@ -107,9 +107,9 @@ def identify_swing_points(df, window=3):
     swing_highs = []
     swing_lows = []
     for i in range(window, len(df) - window):
-        if highs[i] == max(highs[i - window:i + window + 1]):
+        if highs.iloc[i] == max(highs.iloc[i - window:i + window + 1]):
             swing_highs.append(i)
-        if lows[i] == min(lows[i - window:i + window + 1]):
+        if lows.iloc[i] == min(lows.iloc[i - window:i + window + 1]):
             swing_lows.append(i)
     st.write(f"[KL Calc] Found swing_highs: {swing_highs}, swing_lows: {swing_lows}")
     return swing_highs, swing_lows
