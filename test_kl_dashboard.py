@@ -58,6 +58,14 @@ if not weekly_price_data.empty:
         if st.button("Add KL Entry"):
             try:
                 st.write(f"[DEBUG] Selected label: {selected_label}")
+                # Convert label to pandas Timestamp with correct timezone
+                date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in weekly_price_data['datetime']}
+                if selected_label in date_label_to_dt:
+                    selected_dt = date_label_to_dt[selected_label]
+                else:
+                    # Fallback: try parsing
+                    selected_dt = pd.to_datetime(selected_label)
+                st.write(f"[DEBUG] Converted selected_label to datetime: {selected_dt}")
                 st.write(f"[KL UI] Calling calculate_kl_for_label with label={selected_label}")
                 kl_zone = calculate_kl_for_label(weekly_price_data, cot_data, selected_label)
                 st.write(f"[KL UI] KL zone result: {kl_zone}")
