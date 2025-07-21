@@ -202,7 +202,8 @@ def calculate_kl_for_label(price_data, cot_data, candle_label, atr_multiplier=2.
         raise ValueError(f"No matching candle found for {candle_label} (datetime: {selected_dt})")
     selected_idx = match_idx[0]
     print(f"[DEBUG] Matched DataFrame index: {selected_idx}")
-    print(f"[DEBUG] Matched DataFrame row: {price_data.iloc[selected_idx].to_dict()}")
+    row_pos = price_data.index.get_loc(selected_idx)
+    print(f"[DEBUG] Matched DataFrame row: {price_data.iloc[row_pos].to_dict()}")
     # Use sum of abs of all COT net changes in the latest quarter
     cot_weight = 0.5
     if not cot_data.empty and len(cot_data) >= 2:
