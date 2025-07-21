@@ -56,7 +56,7 @@ class SupabaseKLClient:
     def get_kl_zones_for_symbol(self, symbol: str, time_period: str = 'weekly') -> List[Dict]:
         """Retrieve KL zones for a specific symbol and time period"""
         try:
-            response = self.client.table('kl_zones').select('*').eq('symbol', symbol).eq('time_period', time_period).order('clicked_datetime', desc=True).execute()
+            response = self.client.table('kl_zones').select('*').eq('symbol', symbol).eq('time_period', time_period).order('created_at', desc=True).execute()
             
             if response.data:
                 return response.data

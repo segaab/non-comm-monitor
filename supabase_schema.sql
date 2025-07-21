@@ -1,59 +1,54 @@
 -- Supabase Database Schema for Non-Commercial Dashboard
 -- Key Liquidity (KL) Zones Storage
 
--- Create the kl_zones table
-CREATE TABLE IF NOT EXISTS kl_zones (
+-- Drop the existing kl_zones table if it exists
+DROP TABLE IF EXISTS kl_zones CASCADE;
+
+-- Create the kl_zones table with all required fields for KL entry
+CREATE TABLE kl_zones (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    
-    -- Asset Information
     symbol VARCHAR(20) NOT NULL,
     cot_asset_name VARCHAR(100) NOT NULL,
-    
-    -- KL Zone Details
     kl_type VARCHAR(20) NOT NULL CHECK (kl_type IN ('Swing High', 'Swing Low', 'General')),
     zone_high DECIMAL(15, 5) NOT NULL,
     zone_low DECIMAL(15, 5) NOT NULL,
     zone_size DECIMAL(15, 5) NOT NULL,
-    
-    -- Technical Analysis
     atr_value DECIMAL(15, 5) NOT NULL,
     atr_multiplier DECIMAL(5, 2) DEFAULT 2.0,
-    
-    -- COT Data
     cot_net_change DECIMAL(10, 6),
-    cot_long_positions BIGINT,
-    cot_short_positions BIGINT,
-    cot_net_ratio DECIMAL(10, 6),
-    
-    -- Price Data at KL Point
-    clicked_price DECIMAL(15, 5) NOT NULL,
-    clicked_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-    clicked_point_index INTEGER NOT NULL,
-    
-    -- Time Period Information
+    candle_label TEXT NOT NULL,
     time_period VARCHAR(10) NOT NULL CHECK (time_period IN ('weekly', 'quarterly')),
     chart_interval VARCHAR(10) NOT NULL DEFAULT '1h',
-    
-    -- Metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    -- User/Session Information (for future authentication)
     session_id VARCHAR(100),
     user_notes TEXT,
-    
-    -- Validation
     CONSTRAINT valid_zone CHECK (zone_high > zone_low),
     CONSTRAINT valid_atr CHECK (atr_value > 0),
-    CONSTRAINT valid_zone_size CHECK (zone_size > 0)
+    CONSTRAINT valid_zone_size CHECK (zone_size > 0),
+    CONSTRAINT unique_symbol_period_candlelabel UNIQUE (symbol, time_period, candle_label)
 );
 
--- Create indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_kl_zones_symbol ON kl_zones(symbol);
-CREATE INDEX IF NOT EXISTS idx_kl_zones_datetime ON kl_zones(clicked_datetime);
-CREATE INDEX IF NOT EXISTS idx_kl_zones_type ON kl_zones(kl_type);
-CREATE INDEX IF NOT EXISTS idx_kl_zones_period ON kl_zones(time_period);
-CREATE INDEX IF NOT EXISTS idx_kl_zones_session ON kl_zones(session_id);
+-- Indexes for performance
+CREATE INDEX idx_kl_zones_symbol ON kl_zones(symbol);
+CREATE INDEX idx_kl_zones_datetime ON kl_zones(created_at);
+CREATE INDEX idx_kl_zones_type ON kl_zones(kl_type);
+CREATE INDEX idx_kl_zones_period ON kl_zones(time_period);
+CREATE INDEX idx_kl_zones_session ON kl_zones(session_id);
+
+-- Trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_kl_zones_updated_at 
+    BEFORE UPDATE ON kl_zones 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Create a view for KL zones with calculated fields
 CREATE OR REPLACE VIEW kl_zones_summary AS
@@ -70,29 +65,13 @@ SELECT
     atr_value,
     atr_multiplier,
     cot_net_change,
-    cot_net_ratio,
-    clicked_price,
-    clicked_datetime,
+    candle_label,
     time_period,
+    chart_interval,
     created_at,
     user_notes
 FROM kl_zones
-ORDER BY clicked_datetime DESC;
-
--- Create a function to update the updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Create trigger to automatically update updated_at
-CREATE TRIGGER update_kl_zones_updated_at 
-    BEFORE UPDATE ON kl_zones 
-    FOR EACH ROW 
-    EXECUTE FUNCTION update_updated_at_column();
+ORDER BY created_at DESC;
 
 -- Create a function to get KL zones for a specific symbol and time period
 CREATE OR REPLACE FUNCTION get_kl_zones_for_symbol(
@@ -108,9 +87,11 @@ RETURNS TABLE (
     zone_midpoint DECIMAL(15, 5),
     zone_size DECIMAL(15, 5),
     cot_net_change DECIMAL(10, 6),
-    clicked_price DECIMAL(15, 5),
-    clicked_datetime TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE
+    candle_label TEXT,
+    time_period VARCHAR(10),
+    chart_interval VARCHAR(10),
+    created_at TIMESTAMP WITH TIME ZONE,
+    user_notes TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -123,13 +104,15 @@ BEGIN
         (kz.zone_high + kz.zone_low) / 2 as zone_midpoint,
         kz.zone_size,
         kz.cot_net_change,
-        kz.clicked_price,
-        kz.clicked_datetime,
-        kz.created_at
+        kz.candle_label,
+        kz.time_period,
+        kz.chart_interval,
+        kz.created_at,
+        kz.user_notes
     FROM kl_zones kz
     WHERE kz.symbol = p_symbol 
     AND kz.time_period = p_time_period
-    ORDER BY kz.clicked_datetime DESC;
+    ORDER BY kz.created_at DESC;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -156,7 +139,7 @@ BEGIN
         COUNT(*) FILTER (WHERE kl_type = 'Swing High') as swing_high_count,
         COUNT(*) FILTER (WHERE kl_type = 'Swing Low') as swing_low_count,
         COUNT(*) FILTER (WHERE kl_type = 'General') as general_count,
-        MAX(clicked_datetime) as latest_kl_datetime
+        MAX(created_at) as latest_kl_datetime
     FROM kl_zones
     WHERE symbol = p_symbol 
     AND time_period = p_time_period;
