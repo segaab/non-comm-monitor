@@ -37,6 +37,7 @@ st.title("KL Test Dashboard")
 # Move asset selection to sidebar and make it more visible
 with st.sidebar:
     st.header("Asset Selection")
+    st.write("[DEBUG] Asset list:", list(COT_FUTURES_MAPPING.keys()))  # Debug: show asset list
     selected_asset = st.selectbox("Select Asset", list(COT_FUTURES_MAPPING.keys()), index=0)
     st.markdown("---")
     st.info("Use the sidebar to select the asset for analysis.")
