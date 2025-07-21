@@ -58,12 +58,16 @@ if not weekly_price_data.empty:
         if st.button("Add KL Entry"):
             try:
                 st.write(f"[DEBUG] Selected label: {selected_label}")
+                logging.info(f"[KL UI] Calling calculate_kl_for_label with label={selected_label}")
                 kl_zone = calculate_kl_for_label(weekly_price_data, cot_data, selected_label)
+                logging.info(f"[KL UI] KL zone result: {kl_zone}")
                 st.write(f"[DEBUG] KL zone: {kl_zone}")
                 if kl_zone is None:
                     st.error("KL calculation failed: No KL zone returned.")
                 else:
+                    logging.info(f"[KL UI] Calling insert_kl_to_supabase with kl_zone for label={selected_label}")
                     result = insert_kl_to_supabase(kl_zone, selected_symbol, selected_asset, selected_label)
+                    logging.info(f"[KL UI] Insert result: {result}")
                     st.write(f"[DEBUG] Insert result: {result}")
                     if result and result.get('action') in ('inserted', 'updated'):
                         st.success(f"KL {result['action']}! {selected_label}")

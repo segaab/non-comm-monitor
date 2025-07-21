@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from supabase_client import get_kl_client, format_kl_zone_for_db
 import requests
 from yahooquery import Ticker
+import logging
 
 def get_latest_calendar_quarter():
     """Return the start and end dates (inclusive) of the latest completed calendar quarter."""
@@ -29,12 +30,17 @@ def get_latest_calendar_quarter():
     return start, end
 
 def calculate_kl_zone(clicked_point, df, cot_net_change, atr_multiplier=2.0):
-    """Calculate Key Liquidity zone based on clicked point and COT net change"""
+    logging.info(f"[KL Calc] calculate_kl_zone: clicked_point={clicked_point}, cot_net_change={cot_net_change}, atr_multiplier={atr_multiplier}")
     if clicked_point >= len(df):
+        logging.error(f"[KL Calc] Invalid clicked_point: {clicked_point} >= {len(df)}")
         return None
     
     point_data = df.iloc[clicked_point]
-    atr = calculate_atr(df).iloc[clicked_point]
+    try:
+        atr = calculate_atr(df).iloc[clicked_point]
+    except Exception as e:
+        logging.error(f"Error calculating ATR: {e}")
+        return None
     
     # Base zone size on ATR
     base_zone_size = atr * atr_multiplier
@@ -45,6 +51,7 @@ def calculate_kl_zone(clicked_point, df, cot_net_change, atr_multiplier=2.0):
     
     # Determine if it's a swing high or low
     swing_highs, swing_lows = identify_swing_points(df)
+    logging.info(f"[KL Calc] swing_highs={swing_highs}, swing_lows={swing_lows}")
     
     if clicked_point in swing_highs:
         # KL zone above swing high
@@ -62,7 +69,7 @@ def calculate_kl_zone(clicked_point, df, cot_net_change, atr_multiplier=2.0):
         zone_low = point_data['Low'] - zone_size * 0.5
         kl_type = "General"
     
-    return {
+    result = {
         'clicked_point': clicked_point,
         'datetime': point_data['datetime'],
         'price': point_data['Close'],
@@ -73,6 +80,8 @@ def calculate_kl_zone(clicked_point, df, cot_net_change, atr_multiplier=2.0):
         'kl_type': kl_type,
         'zone_size': zone_size
     }
+    logging.info(f"[KL Calc] KL zone result: {result}")
+    return result
 
 def calculate_net_position_ratio(long, short):
     """Calculates the ratio (Long - Short) / (Long + Short), handling division by zero."""
@@ -81,6 +90,35 @@ def calculate_net_position_ratio(long, short):
         return 0.0
     ratio = (long - short) / total_positions
     return ratio
+
+def calculate_atr(df, period=14):
+    logging.info(f"[KL Calc] calculate_atr: period={period}")
+    high = df['High']
+    low = df['Low']
+    close = df['Close']
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs()
+    ], axis=1).max(axis=1)
+    atr = tr.rolling(window=period, min_periods=1).mean()
+    logging.info(f"[KL Calc] ATR calculated, first 5: {atr.head().to_list()}")
+    return atr
+
+def identify_swing_points(df, window=3):
+    logging.info(f"[KL Calc] identify_swing_points: window={window}")
+    highs = df['High']
+    lows = df['Low']
+    swing_highs = []
+    swing_lows = []
+    for i in range(window, len(df) - window):
+        if highs[i] == max(highs[i - window:i + window + 1]):
+            swing_highs.append(i)
+        if lows[i] == min(lows[i - window:i + window + 1]):
+            swing_lows.append(i)
+    logging.info(f"[KL Calc] Found swing_highs: {swing_highs}, swing_lows: {swing_lows}")
+    return swing_highs, swing_lows
 
 def fetch_price_data(symbol, start_date=None, end_date=None, interval="1h"):
     """Fetch price data using yahooquery for a specific date range (calendar quarter)."""
@@ -181,6 +219,7 @@ def fetch_quarter_data(symbol, cot_asset_name, price_interval='1h'):
 
 # 2. Accept user-specified price datetime/candle label and calculate the KL range
 def calculate_kl_for_label(price_data, cot_data, candle_label, atr_multiplier=2.0):
+    logging.info(f"[KL Calc] calculate_kl_for_label: candle_label={candle_label}, atr_multiplier={atr_multiplier}")
     # Map dropdown labels to datetime objects
     date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in price_data['datetime']}
     print(f"[DEBUG] Available candle labels: {list(date_label_to_dt.keys())}")
@@ -216,6 +255,7 @@ def calculate_kl_for_label(price_data, cot_data, candle_label, atr_multiplier=2.
 
 # 3. Make an entry in the Supabase database, using candle_label as unique identifier
 def insert_kl_to_supabase(kl_zone, symbol, cot_asset_name, candle_label, time_period='weekly', chart_interval='1h'):
+    logging.info(f"[KL DB] insert_kl_to_supabase: symbol={symbol}, candle_label={candle_label}, time_period={time_period}, chart_interval={chart_interval}")
     kl_client = get_kl_client()
     db_data = format_kl_zone_for_db(kl_zone, symbol, cot_asset_name, time_period)
     db_data['chart_interval'] = chart_interval
@@ -229,22 +269,29 @@ def insert_kl_to_supabase(kl_zone, symbol, cot_asset_name, candle_label, time_pe
                 duplicate = entry
                 break
         if duplicate:
+            logging.info(f"[KL DB] Duplicate found, updating id={duplicate['id']}")
             # Update existing entry
             try:
                 db_result = kl_client.update_kl_zone(duplicate['id'], db_data)
                 action = 'updated'
+                logging.info(f"[KL DB] Update result: {db_result}")
                 return {'action': action, 'result': db_result}
             except Exception as e:
+                logging.error(f"[KL DB] Update failed: {e}")
                 return {'action': 'update_failed', 'error': str(e)}
         else:
+            logging.info(f"[KL DB] No duplicate found, inserting new KL zone.")
             # Insert new entry
             try:
                 db_result = kl_client.insert_kl_zone(db_data)
                 action = 'inserted'
+                logging.info(f"[KL DB] Insert result: {db_result}")
                 return {'action': action, 'result': db_result}
             except Exception as e:
+                logging.error(f"[KL DB] Insert failed: {e}")
                 return {'action': 'insert_failed', 'error': str(e)}
     except Exception as e:
+        logging.error(f"[KL DB] DB error: {e}")
         return {'action': 'db_error', 'error': str(e)}
 
 # Note: The Supabase table schema should include a 'candle_label' (string, unique per symbol/period) field for uniqueness. 
