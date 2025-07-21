@@ -56,15 +56,35 @@ else:
 st.header("Price Chart (Wednesday-Tuesday)")
 if not weekly_price_data.empty:
     fig = go.Figure()
+    # Candlestick chart
     fig.add_trace(go.Candlestick(
         x=weekly_price_data['datetime'],
         open=weekly_price_data['Open'],
         high=weekly_price_data['High'],
         low=weekly_price_data['Low'],
         close=weekly_price_data['Close'],
-        name='OHLC'))
+        name='Price',
+        increasing_line_color='green',
+        decreasing_line_color='red',
+        showlegend=True
+    ))
+    # Overlay KL zones
     fig = add_kl_overlay(fig, kl_zones, weekly_price_data)
-    fig.update_layout(title="Price Chart", height=500)
+    # Modern layout
+    fig.update_layout(
+        title={
+            'text': f"{selected_asset} ({selected_symbol}) - Weekly Price (1H)",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 22}
+        },
+        xaxis_title='Date',
+        yaxis_title='Price',
+        xaxis_rangeslider_visible=False,
+        height=500,
+        template='plotly_white',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 # --- RVol Chart ---
