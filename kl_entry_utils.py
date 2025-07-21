@@ -30,27 +30,25 @@ def get_latest_calendar_quarter():
     return start, end
 
 def calculate_kl_zone(candle_label, df, cot_net_change, atr_multiplier=2.0):
-    st.write(f"[KL Calc] calculate_kl_zone: candle_label={candle_label}, cot_net_change={cot_net_change}, atr_multiplier={atr_multiplier}")
-    # Find the row position for the given datetime (candle_label)
+    # st.write(f"[KL Calc] calculate_kl_zone: candle_label={candle_label}, cot_net_change={cot_net_change}, atr_multiplier={atr_multiplier}")
     if isinstance(candle_label, str):
-        # Try to parse if not already a Timestamp
         candle_label = pd.to_datetime(candle_label)
     match_idx = df[df['datetime'] == candle_label].index
     if len(match_idx) == 0:
-        st.write(f"[KL Calc] No matching candle found for {candle_label}")
+        # st.write(f"[KL Calc] No matching candle found for {candle_label}")
         return None
     row_pos = df.index.get_loc(match_idx[0])
     point_data = df.iloc[row_pos]
     try:
         atr = calculate_atr(df).iloc[row_pos]
     except Exception as e:
-        st.write(f"Error calculating ATR: {e}")
+        # st.write(f"Error calculating ATR: {e}")
         return None
     base_zone_size = atr * atr_multiplier
     cot_weight = abs(cot_net_change) if cot_net_change is not None else 0.5
     zone_size = base_zone_size * (1 + cot_weight)
     swing_highs, swing_lows = identify_swing_points(df)
-    st.write(f"[KL Calc] swing_highs={swing_highs}, swing_lows={swing_lows}")
+    # st.write(f"[KL Calc] swing_highs={swing_highs}, swing_lows={swing_lows}")
     if row_pos in swing_highs:
         zone_high = point_data['High'] + zone_size
         zone_low = point_data['High'] - zone_size * 0.5
@@ -74,7 +72,7 @@ def calculate_kl_zone(candle_label, df, cot_net_change, atr_multiplier=2.0):
         'kl_type': kl_type,
         'zone_size': zone_size
     }
-    st.write(f"[KL Calc] KL zone result: {result}")
+    # st.write(f"[KL Calc] KL zone result: {result}")
     return result
 
 def calculate_net_position_ratio(long, short):
@@ -224,45 +222,43 @@ def fetch_quarter_data(symbol, cot_asset_name, price_interval='1h'):
 
 # 2. Accept user-specified price datetime/candle label and calculate the KL range
 def calculate_kl_for_label(price_data, cot_data, candle_label, atr_multiplier=2.0):
-    st.write(f"[KL Calc] calculate_kl_for_label: candle_label={candle_label}, atr_multiplier={atr_multiplier}")
-    # Accept candle_label as datetime or string
+    # st.write(f"[KL Calc] calculate_kl_for_label: candle_label={candle_label}, atr_multiplier={atr_multiplier}")
     if isinstance(candle_label, str):
         date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in price_data['datetime']}
-        st.write(f"[DEBUG] Available candle labels: {list(date_label_to_dt.keys())}")
-        st.write(f"[DEBUG] Label to datetime mapping: {date_label_to_dt}")
+        # st.write(f"[DEBUG] Available candle labels: {list(date_label_to_dt.keys())}")
+        # st.write(f"[DEBUG] Label to datetime mapping: {date_label_to_dt}")
         if candle_label not in date_label_to_dt:
-            st.write(f"[DEBUG] Candle label '{candle_label}' not found in price data.")
+            # st.write(f"[DEBUG] Candle label '{candle_label}' not found in price data.")
             raise ValueError(f"Candle label '{candle_label}' not found in price data.")
         selected_dt = date_label_to_dt[candle_label]
     else:
         selected_dt = candle_label
-    st.write(f"[DEBUG] Selected datetime: {selected_dt}")
+    # st.write(f"[DEBUG] Selected datetime: {selected_dt}")
     match_idx = price_data[price_data['datetime'] == selected_dt].index
     if len(match_idx) == 0:
         selected_dt_str = selected_dt.strftime('%Y-%m-%d %H:%M')
         match_idx = price_data[price_data['datetime'].dt.strftime('%Y-%m-%d %H:%M') == selected_dt_str].index
     if len(match_idx) == 0:
-        st.write(f"[DEBUG] No matching candle found for {candle_label} (datetime: {selected_dt})")
+        # st.write(f"[DEBUG] No matching candle found for {candle_label} (datetime: {selected_dt})")
         raise ValueError(f"No matching candle found for {candle_label} (datetime: {selected_dt})")
     row_pos = price_data.index.get_loc(match_idx[0])
-    st.write(f"[DEBUG] Matched DataFrame row: {price_data.iloc[row_pos].to_dict()}")
+    # st.write(f"[DEBUG] Matched DataFrame row: {price_data.iloc[row_pos].to_dict()}")
     cot_weight = 0.5
     if not cot_data.empty and len(cot_data) >= 2:
         cot_net_changes = cot_data['net_position_ratio'].diff().dropna()
         cot_weight = abs(cot_net_changes).sum()
-    st.write(f"[DEBUG] Computed cot_weight (sum of abs net changes): {cot_weight}")
+    # st.write(f"[DEBUG] Computed cot_weight (sum of abs net changes): {cot_weight}")
     kl_zone = calculate_kl_zone(selected_dt, price_data, cot_weight, atr_multiplier=atr_multiplier)
-    st.write(f"[DEBUG] KL zone result: {kl_zone}")
+    # st.write(f"[DEBUG] KL zone result: {kl_zone}")
     return kl_zone
 
 # 3. Make an entry in the Supabase database, using candle_label as unique identifier
 def insert_kl_to_supabase(kl_zone, symbol, cot_asset_name, candle_label, time_period='weekly', chart_interval='1h'):
-    st.write(f"[KL DB] insert_kl_to_supabase: symbol={symbol}, candle_label={candle_label}, time_period={time_period}, chart_interval={chart_interval}")
+    # st.write(f"[KL DB] insert_kl_to_supabase: symbol={symbol}, candle_label={candle_label}, time_period={time_period}, chart_interval={chart_interval}")
     kl_client = get_kl_client()
     db_data = format_kl_zone_for_db(kl_zone, symbol, cot_asset_name, time_period)
     db_data['chart_interval'] = chart_interval
     db_data['candle_label'] = candle_label  # Add unique identifier
-    # Check for duplicate (same symbol, period, candle_label)
     try:
         existing = kl_client.get_kl_zones_for_symbol(symbol, time_period)
         duplicate = None
@@ -271,29 +267,27 @@ def insert_kl_to_supabase(kl_zone, symbol, cot_asset_name, candle_label, time_pe
                 duplicate = entry
                 break
         if duplicate:
-            st.write(f"[KL DB] Duplicate found, updating id={duplicate['id']}")
-            # Update existing entry
+            # st.write(f"[KL DB] Duplicate found, updating id={duplicate['id']}")
             try:
                 db_result = kl_client.update_kl_zone(duplicate['id'], db_data)
                 action = 'updated'
-                st.write(f"[KL DB] Update result: {db_result}")
+                # st.write(f"[KL DB] Update result: {db_result}")
                 return {'action': action, 'result': db_result}
             except Exception as e:
-                st.write(f"[KL DB] Update failed: {e}")
+                # st.write(f"[KL DB] Update failed: {e}")
                 return {'action': 'update_failed', 'error': str(e)}
         else:
-            st.write(f"[KL DB] No duplicate found, inserting new KL zone.")
-            # Insert new entry
+            # st.write(f"[KL DB] No duplicate found, inserting new KL zone.")
             try:
                 db_result = kl_client.insert_kl_zone(db_data)
                 action = 'inserted'
-                st.write(f"[KL DB] Insert result: {db_result}")
+                # st.write(f"[KL DB] Insert result: {db_result}")
                 return {'action': action, 'result': db_result}
             except Exception as e:
-                st.write(f"[KL DB] Insert failed: {e}")
+                # st.write(f"[KL DB] Insert failed: {e}")
                 return {'action': 'insert_failed', 'error': str(e)}
     except Exception as e:
-        st.write(f"[KL DB] DB error: {e}")
+        # st.write(f"[KL DB] DB error: {e}")
         return {'action': 'db_error', 'error': str(e)}
 
 # Note: The Supabase table schema should include a 'candle_label' (string, unique per symbol/period) field for uniqueness. 

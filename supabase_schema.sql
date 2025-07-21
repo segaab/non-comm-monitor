@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS kl_zones CASCADE;
 CREATE TABLE kl_zones (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     symbol VARCHAR(20) NOT NULL,
-    cot_asset_name VARCHAR(100) NOT NULL,
+    cot_asset_name VARCHAR(100), -- No longer NOT NULL
     kl_type VARCHAR(20) NOT NULL CHECK (kl_type IN ('Swing High', 'Swing Low', 'General')),
     zone_high DECIMAL(15, 5) NOT NULL,
     zone_low DECIMAL(15, 5) NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE kl_zones (
     CONSTRAINT valid_zone CHECK (zone_high > zone_low),
     CONSTRAINT valid_atr CHECK (atr_value > 0),
     CONSTRAINT valid_zone_size CHECK (zone_size > 0),
-    CONSTRAINT unique_symbol_period_candlelabel UNIQUE (symbol, time_period, candle_label)
+    CONSTRAINT unique_symbol_candlelabel UNIQUE (symbol, candle_label)
 );
 
 -- Indexes for performance
