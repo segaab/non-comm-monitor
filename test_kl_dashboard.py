@@ -34,9 +34,12 @@ COT_FUTURES_MAPPING = {
 st.set_page_config(page_title="KL Test Dashboard", layout="wide")
 st.title("KL Test Dashboard")
 
-# Move asset selection to sidebar
+# Move asset selection to sidebar and make it more visible
 with st.sidebar:
+    st.header("Asset Selection")
     selected_asset = st.selectbox("Select Asset", list(COT_FUTURES_MAPPING.keys()), index=0)
+    st.markdown("---")
+    st.info("Use the sidebar to select the asset for analysis.")
 selected_symbol = COT_FUTURES_MAPPING[selected_asset]
 
 # --- Fetch data ---
