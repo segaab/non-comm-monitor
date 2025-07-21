@@ -183,10 +183,14 @@ def fetch_quarter_data(symbol, cot_asset_name, price_interval='1h'):
 def calculate_kl_for_label(price_data, cot_data, candle_label, atr_multiplier=2.0):
     # Map dropdown labels to datetime objects
     date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in price_data['datetime']}
+    print(f"[DEBUG] Available candle labels: {list(date_label_to_dt.keys())}")
+    print(f"[DEBUG] Label to datetime mapping: {date_label_to_dt}")
     if candle_label not in date_label_to_dt:
+        print(f"[DEBUG] Candle label '{candle_label}' not found in price data.")
         raise ValueError(f"Candle label '{candle_label}' not found in price data.")
     # Convert label back to pandas Timestamp (with tz)
     selected_dt = date_label_to_dt[candle_label]
+    print(f"[DEBUG] Selected datetime: {selected_dt}")
     # Try direct match first
     match_idx = price_data[price_data['datetime'] == selected_dt].index
     # If no match, try tolerant string match (down to minute)
@@ -194,14 +198,19 @@ def calculate_kl_for_label(price_data, cot_data, candle_label, atr_multiplier=2.
         selected_dt_str = selected_dt.strftime('%Y-%m-%d %H:%M')
         match_idx = price_data[price_data['datetime'].dt.strftime('%Y-%m-%d %H:%M') == selected_dt_str].index
     if len(match_idx) == 0:
+        print(f"[DEBUG] No matching candle found for {candle_label} (datetime: {selected_dt})")
         raise ValueError(f"No matching candle found for {candle_label} (datetime: {selected_dt})")
     selected_idx = match_idx[0]
+    print(f"[DEBUG] Matched DataFrame index: {selected_idx}")
+    print(f"[DEBUG] Matched DataFrame row: {price_data.iloc[selected_idx].to_dict()}")
     # Use sum of abs of all COT net changes in the latest quarter
     cot_weight = 0.5
     if not cot_data.empty and len(cot_data) >= 2:
         cot_net_changes = cot_data['net_position_ratio'].diff().dropna()
         cot_weight = abs(cot_net_changes).sum()
+    print(f"[DEBUG] Computed cot_weight (sum of abs net changes): {cot_weight}")
     kl_zone = calculate_kl_zone(selected_idx, price_data, cot_weight, atr_multiplier=atr_multiplier)
+    print(f"[DEBUG] KL zone result: {kl_zone}")
     return kl_zone
 
 # 3. Make an entry in the Supabase database, using candle_label as unique identifier
