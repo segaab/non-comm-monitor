@@ -17,16 +17,13 @@ COT_FUTURES_MAPPING = {
 st.set_page_config(page_title="KL Test Dashboard", layout="wide")
 st.title("KL Test Dashboard")
 
-selected_asset = st.selectbox("Select Asset", list(COT_FUTURES_MAPPING.keys()), index=0)
+# Move asset selection to sidebar
+with st.sidebar:
+    selected_asset = st.selectbox("Select Asset", list(COT_FUTURES_MAPPING.keys()), index=0)
 selected_symbol = COT_FUTURES_MAPPING[selected_asset]
 
 # --- Fetch data ---
 price_data, cot_data = fetch_quarter_data(selected_symbol, selected_asset, price_interval='1h')
-# Remove debug: Show fetched price and COT data
-# st.subheader("[DEBUG] Fetched Price Data (head)")
-# st.dataframe(price_data.head(), use_container_width=True)
-# st.subheader("[DEBUG] Fetched COT Data (head)")
-# st.dataframe(cot_data.head(), use_container_width=True)
 # Convert all datetimes to GMT+3
 if not price_data.empty and 'datetime' in price_data.columns:
     price_data['datetime'] = price_data['datetime'].dt.tz_convert('Etc/GMT-3')
@@ -44,51 +41,16 @@ kl_zones = [
     for kl in all_kl_zones_raw
 ]
 
-# --- KL Entry UI ---
-st.header("KL Calculation and Entry")
-if not weekly_price_data.empty:
-    # Dropdown for candle label
-    date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in weekly_price_data['datetime']}
-    available_dates = list(date_label_to_dt.keys())
-    # st.write(f"[DEBUG] Available candle labels: {available_dates}")
-    # st.write(f"[DEBUG] Label to datetime mapping: {date_label_to_dt}")
-    selected_label = st.selectbox("Select candle for KL calculation:", available_dates, index=len(available_dates)-1)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Add KL Entry"):
-            try:
-                st.write(f"[DEBUG] Selected label: {selected_label}")
-                # Convert label to pandas Timestamp with correct timezone
-                date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in weekly_price_data['datetime']}
-                if selected_label in date_label_to_dt:
-                    selected_dt = date_label_to_dt[selected_label]
-                else:
-                    # Fallback: try parsing
-                    selected_dt = pd.to_datetime(selected_label)
-                st.write(f"[DEBUG] Converted selected_label to datetime: {selected_dt}")
-                st.write(f"[KL UI] Calling calculate_kl_for_label with label={selected_label}")
-                kl_zone = calculate_kl_for_label(weekly_price_data, cot_data, selected_label)
-                st.write(f"[KL UI] KL zone result: {kl_zone}")
-                st.write(f"[DEBUG] KL zone: {kl_zone}")
-                if kl_zone is None:
-                    st.error("KL calculation failed: No KL zone returned.")
-                else:
-                    st.write(f"[KL UI] Calling insert_kl_to_supabase with kl_zone for label={selected_label}")
-                    result = insert_kl_to_supabase(kl_zone, selected_symbol, selected_asset, selected_label)
-                    st.write(f"[KL UI] Insert result: {result}")
-                    st.write(f"[DEBUG] Insert result: {result}")
-                    if result and result.get('action') in ('inserted', 'updated'):
-                        st.success(f"KL {result['action']}! {selected_label}")
-                    elif result:
-                        st.error(f"KL entry failed: {result.get('error')}")
-                    else:
-                        st.error("KL entry failed: No result returned from insert function.")
-            except Exception as e:
-                st.error(f"KL calculation/entry error: {e}")
-                st.write(f"[DEBUG] Exception: {e}")
-    with col2:
-        if st.button("Refresh KLs"):
-            st.experimental_rerun()
+# --- Display latest net change in non-commercial positions ---
+latest_cnet_change = None
+if not cot_data.empty and 'net_position_ratio' in cot_data.columns:
+    cot_net_changes = cot_data['net_position_ratio'].diff().dropna()
+    if not cot_net_changes.empty:
+        latest_cnet_change = cot_net_changes.iloc[-1]
+if latest_cnet_change is not None:
+    st.info(f"Latest net change in non-commercial positions: {latest_cnet_change:.4f}")
+else:
+    st.info("No COT net change data available.")
 
 # --- Price Chart with KL Overlay ---
 st.header("Price Chart (Wednesday-Tuesday)")
@@ -126,4 +88,50 @@ if kl_zones:
     kl_df = pd.DataFrame(kl_zones)
     st.dataframe(kl_df, use_container_width=True)
 else:
-    st.info("No KL zones found in database.") 
+    st.info("No KL zones found in database.")
+
+# --- KL Entry UI ---
+st.header("KL Calculation and Entry")
+if not weekly_price_data.empty:
+    # Move candle label dropdown to the bottom
+    st.markdown("---")
+    st.subheader("Select Candle for KL Calculation")
+    date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in weekly_price_data['datetime']}
+    available_dates = list(date_label_to_dt.keys())
+    selected_label = st.selectbox("Select candle for KL calculation:", available_dates, index=len(available_dates)-1)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Add KL Entry"):
+            try:
+                st.write(f"[DEBUG] Selected label: {selected_label}")
+                # Convert label to pandas Timestamp with correct timezone
+                date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in weekly_price_data['datetime']}
+                if selected_label in date_label_to_dt:
+                    selected_dt = date_label_to_dt[selected_label]
+                else:
+                    # Fallback: try parsing
+                    selected_dt = pd.to_datetime(selected_label)
+                st.write(f"[DEBUG] Converted selected_label to datetime: {selected_dt}")
+                st.write(f"[KL UI] Calling calculate_kl_for_label with label={selected_label}")
+                kl_zone = calculate_kl_for_label(weekly_price_data, cot_data, selected_label)
+                st.write(f"[KL UI] KL zone result: {kl_zone}")
+                st.write(f"[DEBUG] KL zone: {kl_zone}")
+                if kl_zone is None:
+                    st.error("KL calculation failed: No KL zone returned.")
+                else:
+                    st.write(f"[KL UI] Calling insert_kl_to_supabase with kl_zone for label={selected_label}")
+                    result = insert_kl_to_supabase(kl_zone, selected_symbol, selected_asset, selected_label)
+                    st.write(f"[KL UI] Insert result: {result}")
+                    st.write(f"[DEBUG] Insert result: {result}")
+                    if result and result.get('action') in ('inserted', 'updated'):
+                        st.success(f"KL {result['action']}! {selected_label}")
+                    elif result:
+                        st.error(f"KL entry failed: {result.get('error')}")
+                    else:
+                        st.error("KL entry failed: No result returned from insert function.")
+            except Exception as e:
+                st.error(f"KL calculation/entry error: {e}")
+                st.write(f"[DEBUG] Exception: {e}")
+    with col2:
+        if st.button("Refresh KLs"):
+            st.experimental_rerun() 
