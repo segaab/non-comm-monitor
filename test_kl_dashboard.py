@@ -22,11 +22,11 @@ selected_symbol = COT_FUTURES_MAPPING[selected_asset]
 
 # --- Fetch data ---
 price_data, cot_data = fetch_quarter_data(selected_symbol, selected_asset, price_interval='1h')
-# Debug: Show fetched price and COT data
-st.subheader("[DEBUG] Fetched Price Data (head)")
-st.dataframe(price_data.head(), use_container_width=True)
-st.subheader("[DEBUG] Fetched COT Data (head)")
-st.dataframe(cot_data.head(), use_container_width=True)
+# Remove debug: Show fetched price and COT data
+# st.subheader("[DEBUG] Fetched Price Data (head)")
+# st.dataframe(price_data.head(), use_container_width=True)
+# st.subheader("[DEBUG] Fetched COT Data (head)")
+# st.dataframe(cot_data.head(), use_container_width=True)
 # Convert all datetimes to GMT+3
 if not price_data.empty and 'datetime' in price_data.columns:
     price_data['datetime'] = price_data['datetime'].dt.tz_convert('Etc/GMT-3')
@@ -50,8 +50,8 @@ if not weekly_price_data.empty:
     # Dropdown for candle label
     date_label_to_dt = {dt.strftime('%A, %Y-%m-%d %H:%M'): dt for dt in weekly_price_data['datetime']}
     available_dates = list(date_label_to_dt.keys())
-    st.write(f"[DEBUG] Available candle labels: {available_dates}")
-    st.write(f"[DEBUG] Label to datetime mapping: {date_label_to_dt}")
+    # st.write(f"[DEBUG] Available candle labels: {available_dates}")
+    # st.write(f"[DEBUG] Label to datetime mapping: {date_label_to_dt}")
     selected_label = st.selectbox("Select candle for KL calculation:", available_dates, index=len(available_dates)-1)
     col1, col2 = st.columns(2)
     with col1:
