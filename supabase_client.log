@@ -1,0 +1,7 @@
+2025-07-21 12:26:56,188 ERROR [KL Calc] Invalid clicked_point: 1587 >= 104
+2025-07-21 12:36:43,942 ERROR Error calculating ATR: single positional indexer is out-of-bounds
+2025-07-21 12:42:06,208 ERROR Error calculating ATR: single positional indexer is out-of-bounds
+2025-07-21 12:46:45,010 ERROR Error retrieving KL zones: Server disconnected
+2025-07-21 12:46:45,269 ERROR Error calculating ATR: single positional indexer is out-of-bounds
+2025-07-21 12:50:03,086 ERROR Error calculating ATR: single positional indexer is out-of-bounds
+2025-07-21 17:08:17,346 ERROR Error inserting KL zone: {'message': 'null value in column "cot_asset_name" of relation "kl_zones" violates not-null constraint', 'code': '23502', 'hint': None, 'details': 'Failing row contains (077fd544-201f-4013-8977-4b77030433a9, GC=F, null, General, 2319.00244, 1644.40966, 500.64261, 200.25704, 2.00, null, null, null, null, null, null, null, weekly, 1h, 2025-07-21 14:08:17.434949+00, 2025-07-21 14:08:17.434949+00, null, null, null, 156).'}

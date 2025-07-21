@@ -192,3 +192,19 @@ CREATE POLICY "Allow public delete access" ON kl_zones
 --     2050.50, 2040.50, 10.00, 5.25, 0.0234, 2045.00, 
 --     '2024-01-15 14:00:00+00', 100, 'weekly', 'test_session_1'
 -- ); 
+
+ALTER TABLE kl_zones
+ADD COLUMN IF NOT EXISTS candle_label text;
+
+-- Add unique constraint for (symbol, time_period, candle_label)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'unique_symbol_period_candlelabel'
+          AND table_name = 'kl_zones'
+    ) THEN
+        ALTER TABLE kl_zones
+        ADD CONSTRAINT unique_symbol_period_candlelabel UNIQUE (symbol, time_period, candle_label);
+    END IF;
+END$$; 
