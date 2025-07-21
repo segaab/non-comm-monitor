@@ -106,11 +106,22 @@ def identify_swing_points(df, window=3):
     lows = df['Low']
     swing_highs = []
     swing_lows = []
+    st.write(f"[KL Calc] DataFrame index: {df.index.tolist()}")
+    st.write(f"[KL Calc] DataFrame length: {len(df)}")
     for i in range(window, len(df) - window):
-        if highs.iloc[i] == max(highs.iloc[i - window:i + window + 1]):
-            swing_highs.append(i)
-        if lows.iloc[i] == min(lows.iloc[i - window:i + window + 1]):
-            swing_lows.append(i)
+        try:
+            high_val = highs.iloc[i]
+            high_window = highs.iloc[i - window:i + window + 1]
+            low_val = lows.iloc[i]
+            low_window = lows.iloc[i - window:i + window + 1]
+            st.write(f"[KL Calc] i={i}, high_val={high_val}, high_window={list(high_window)}, low_val={low_val}, low_window={list(low_window)}")
+            if high_val == max(high_window):
+                swing_highs.append(i)
+            if low_val == min(low_window):
+                swing_lows.append(i)
+        except Exception as e:
+            st.write(f"[KL Calc] Exception at i={i}: {e}")
+            raise
     st.write(f"[KL Calc] Found swing_highs: {swing_highs}, swing_lows: {swing_lows}")
     return swing_highs, swing_lows
 
