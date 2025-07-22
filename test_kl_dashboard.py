@@ -5,7 +5,7 @@ from kl_entry_utils import fetch_quarter_data, calculate_kl_for_label, insert_kl
 from kl_data_utils import filter_to_wednesday_tuesday_from_latest, calculate_cot_net_change
 from kl_overlay_utils import fetch_kl_zones, add_kl_overlay
 import logging
-
+from supabase_client import get_kl_client
 
 
 st.set_page_config(page_title="KL Test Dashboard", layout="wide")
@@ -160,6 +160,7 @@ if not weekly_price_data.empty:
                     st.write(f"[DEBUG] Insert result: {result}")
                     if result and result.get('action') in ('inserted', 'updated'):
                         st.success(f"KL {result['action']}! {selected_label}")
+                        st.rerun()
                     elif result:
                         st.error(f"KL entry failed: {result.get('error')}")
                     else:
@@ -169,7 +170,32 @@ if not weekly_price_data.empty:
                 st.write(f"[DEBUG] Exception: {e}")
     with col2:
         if st.button("Refresh KLs"):
-            st.experimental_rerun()
+            st.rerun()
+
+    # --- Remove KL Entry Dropdown and Button ---
+    st.markdown("---")
+    kl_client = get_kl_client()
+    all_kl = kl_client.get_kl_zones_for_symbol(selected_symbol, time_period='weekly')
+    kl_labels = [str(entry.get('candle_label')) for entry in all_kl]
+    if kl_labels:
+        kl_to_remove = st.selectbox("Select KL to remove (by candle):", kl_labels, key="remove-kl-dropdown")
+        if st.button("Remove KL Entry"):
+            entry_to_delete = None
+            for entry in all_kl:
+                if str(entry.get('candle_label')) == str(kl_to_remove):
+                    entry_to_delete = entry
+                    break
+            if entry_to_delete:
+                success = kl_client.delete_kl_zone(entry_to_delete['id'])
+                if success:
+                    st.success(f"KL entry for {selected_symbol} @ {kl_to_remove} deleted.")
+                    st.rerun()
+                else:
+                    st.error("Failed to delete KL entry.")
+            else:
+                st.warning("No KL entry found for this symbol and candle.")
+    else:
+        st.info("No KL entries available for removal.")
 
 # --- KL Table ---
 # Move KL table to the bottom

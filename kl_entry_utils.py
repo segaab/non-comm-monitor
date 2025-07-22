@@ -6,27 +6,18 @@ import requests
 from yahooquery import Ticker
 # import logging  # No longer needed for UI debug
 
-def get_latest_calendar_quarter():
-    """Return the start and end dates (inclusive) of the latest completed calendar quarter."""
-    from datetime import datetime
+def get_current_quarter_dates():
     today = datetime.utcnow().date()
     year = today.year
-    if today.month in [1, 2, 3]:
-        # Q4 of previous year
-        start = datetime(year-1, 10, 1).date()
-        end = datetime(year-1, 12, 31).date()
-    elif today.month in [4, 5, 6]:
-        # Q1
+    if today.month <= 3:
         start = datetime(year, 1, 1).date()
-        end = datetime(year, 3, 31).date()
-    elif today.month in [7, 8, 9]:
-        # Q2
+    elif today.month <= 6:
         start = datetime(year, 4, 1).date()
-        end = datetime(year, 6, 30).date()
-    else:
-        # Q3
+    elif today.month <= 9:
         start = datetime(year, 7, 1).date()
-        end = datetime(year, 9, 30).date()
+    else:
+        start = datetime(year, 10, 1).date()
+    end = today
     return start, end
 
 def calculate_kl_zone(candle_label, df, cot_net_change, atr_multiplier=2.0):
@@ -124,10 +115,11 @@ def identify_swing_points(df, window=3):
     return swing_highs, swing_lows
 
 def fetch_price_data(symbol, start_date=None, end_date=None, interval="1h"):
-    """Fetch price data using yahooquery for a specific date range (calendar quarter)."""
+    """Fetch price data using yahooquery for a specific date range (current quarter up to today)."""
     try:
         if start_date is None or end_date is None:
-            start_date, end_date = get_latest_calendar_quarter()
+            start_date, end_date = get_current_quarter_dates()
+        st.write(f"[DEBUG] Fetching price data for {symbol} from {start_date} to {end_date}")
         t = Ticker(symbol, timeout=60)
         hist = t.history(start=start_date, end=end_date, interval=interval)
         if isinstance(hist, pd.DataFrame) and not hist.empty:
@@ -178,10 +170,11 @@ def fetch_price_data(symbol, start_date=None, end_date=None, interval="1h"):
         return pd.DataFrame()
 
 def fetch_cot_data(cot_asset_name, start_date=None, end_date=None):
-    """Fetch COT data for the specified asset and date range (calendar quarter)."""
+    """Fetch COT data for the specified asset and date range (current quarter up to today)."""
     try:
         if start_date is None or end_date is None:
-            start_date, end_date = get_latest_calendar_quarter()
+            start_date, end_date = get_current_quarter_dates()
+        st.write(f"[DEBUG] Fetching COT data for {cot_asset_name} from {start_date} to {end_date}")
         base_url = "https://publicreporting.cftc.gov/resource/6dca-aqww.json"
         where_clause = (
             f"market_and_exchange_names = '{cot_asset_name}' AND "
